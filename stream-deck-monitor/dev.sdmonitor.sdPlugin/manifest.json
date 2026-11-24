@@ -1,0 +1,88 @@
+{
+    "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
+    "UUID": "dev.sdmonitor",
+    "Name": "System Monitor",
+    "Version": "1.1.0.0",
+    "Author": "Stream Deck Monitor",
+    "Description": "Live CPU, RAM, GPU, VRAM, disk, network, temperatures and game FPS (RTSS) on your keys, each with a sparkline graph.",
+    "Category": "System Monitor",
+    "CategoryIcon": "imgs/plugin/category-icon",
+    "Icon": "imgs/plugin/marketplace",
+    "CodePath": "bin/plugin.js",
+    "PropertyInspectorPath": "ui/inspector.html",
+    "SDKVersion": 3,
+    "Software": {
+        "MinimumVersion": "7.1"
+    },
+    "OS": [
+        {
+            "Platform": "windows",
+            "MinimumVersion": "10"
+        }
+    ],
+    "Nodejs": {
+        "Version": "24"
+    },
+    "Actions": [
+        {
+            "Name": "Metric",
+            "UUID": "dev.sdmonitor.metric",
+            "Icon": "imgs/actions/metric/icon",
+            "Tooltip": "Shows a live metric (CPU, RAM, GPU, VRAM, FPS, temperatures, disk, network) with a sparkline. Choose the metric in the settings below.",
+            "Controllers": [
+                "Keypad"
+            ],
+            "SupportedInMultiActions": false,
+            "UserTitleEnabled": false,
+            "States": [
+                {
+                    "Image": "imgs/actions/metric/key",
+                    "ShowTitle": false
+                }
+            ]
+        },
+        {
+            "Name": "Open Monitor Dashboard",
+            "UUID": "dev.sdmonitor.dashboard",
+            "Icon": "imgs/actions/dashboard/icon",
+            "Tooltip": "Switches to the bundled Monitor Dashboard profile (all metrics on a 15-key Stream Deck).",
+            "Controllers": [
+                "Keypad"
+            ],
+            "SupportedInMultiActions": false,
+            "UserTitleEnabled": false,
+            "States": [
+                {
+                    "Image": "imgs/actions/dashboard/key",
+                    "ShowTitle": false
+                }
+            ]
+        },
+        {
+            "Name": "Back (profile)",
+            "UUID": "dev.sdmonitor.back",
+            "Icon": "imgs/actions/back/icon",
+            "Tooltip": "In the Monitor Dashboard profile: goes back to the profile you were on before.",
+            "Controllers": [
+                "Keypad"
+            ],
+            "SupportedInMultiActions": false,
+            "UserTitleEnabled": false,
+            "States": [
+                {
+                    "Image": "imgs/actions/back/key",
+                    "ShowTitle": false
+                }
+            ]
+        }
+    ],
+    "Profiles": [
+        {
+            "Name": "Monitor Dashboard",
+            "DeviceType": 0,
+            "Readonly": false,
+            "DontAutoSwitchWhenInstalled": true,
+            "AutoInstall": true
+        }
+    ]
+}

@@ -1,0 +1,5 @@
+node_modules/
+dist/
+build-test/
+dev.appmixer.volume.sdPlugin/bin/
+dev.appmixer.volume.sdPlugin/logs/

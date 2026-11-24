@@ -1,0 +1,33 @@
+{
+  "name": "app-volume-mixer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Stream Deck plugin: Windows volume mixer per application with automatic icons and hideable processes",
+  "type": "module",
+  "scripts": {
+    "build:helper": "helper\\build-helper.cmd",
+    "build:plugin": "rollup -c",
+    "build:profile": "node tools/make-profile.mjs",
+    "build": "npm run build:helper && npm run build:profile && npm run build:plugin",
+    "watch": "rollup -c -w --watch.onEnd=\"streamdeck restart dev.appmixer.volume\"",
+    "link": "streamdeck link dev.appmixer.volume.sdPlugin",
+    "restart": "streamdeck restart dev.appmixer.volume",
+    "validate": "streamdeck validate dev.appmixer.volume.sdPlugin",
+    "pack": "streamdeck pack dev.appmixer.volume.sdPlugin --output dist --force"
+  },
+  "dependencies": {
+    "@elgato/streamdeck": "^3.0.5"
+  },
+  "devDependencies": {
+    "@elgato/cli": "^1.10.5",
+    "@rollup/plugin-commonjs": "^29.0.3",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-terser": "^1.0.2",
+    "@rollup/plugin-typescript": "^12.3.1",
+    "@tsconfig/node20": "^20.1.11",
+    "@types/node": "^20.19.43",
+    "rollup": "^4.68.7",
+    "tslib": "^2.9.1",
+    "typescript": "^5.9.3"
+  }
+}

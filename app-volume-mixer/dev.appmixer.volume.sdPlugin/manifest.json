@@ -1,0 +1,139 @@
+{
+    "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
+    "UUID": "dev.appmixer.volume",
+    "Name": "App Volume Mixer",
+    "Version": "3.1.1.0",
+    "Author": "App Volume Mixer",
+    "Description": "Windows volume mixer per application: automatic process icons, volume slider, mute, hideable processes and an Auto profile with pages.",
+    "Category": "App Volume Mixer",
+    "CategoryIcon": "imgs/plugin/category-icon",
+    "Icon": "imgs/plugin/marketplace",
+    "CodePath": "bin/plugin.js",
+    "PropertyInspectorPath": "ui/inspector.html",
+    "SDKVersion": 3,
+    "Software": {
+        "MinimumVersion": "7.1"
+    },
+    "OS": [
+        {
+            "Platform": "windows",
+            "MinimumVersion": "10"
+        }
+    ],
+    "Nodejs": {
+        "Version": "24"
+    },
+    "Actions": [
+        {
+            "Name": "App",
+            "UUID": "dev.appmixer.volume.app",
+            "Icon": "imgs/actions/app/icon",
+            "Tooltip": "Shows the icon and volume of an application. Press = mute / unmute. Put the Volume slider below it in the same column.",
+            "Controllers": [
+                "Keypad"
+            ],
+            "SupportedInMultiActions": false,
+            "UserTitleEnabled": false,
+            "States": [
+                {
+                    "Image": "imgs/actions/app/key",
+                    "ShowTitle": false
+                }
+            ]
+        },
+        {
+            "Name": "Volume slider",
+            "UUID": "dev.appmixer.volume.slider",
+            "Icon": "imgs/actions/slider/icon",
+            "Tooltip": "Vertical slider below an App key. With 2 keys: the upper one raises, the lower one lowers. With 3 or more: press a segment to set the level.",
+            "Controllers": [
+                "Keypad"
+            ],
+            "SupportedInMultiActions": false,
+            "UserTitleEnabled": false,
+            "States": [
+                {
+                    "Image": "imgs/actions/slider/key",
+                    "ShowTitle": false
+                }
+            ]
+        },
+        {
+            "Name": "Auto",
+            "UUID": "dev.appmixer.volume.auto",
+            "Icon": "imgs/actions/auto/icon",
+            "Tooltip": "Switches to the Auto profile: automatically shows every app that is playing audio, with pages.",
+            "Controllers": [
+                "Keypad"
+            ],
+            "SupportedInMultiActions": false,
+            "UserTitleEnabled": false,
+            "States": [
+                {
+                    "Image": "imgs/actions/auto/key",
+                    "ShowTitle": false
+                }
+            ]
+        },
+        {
+            "Name": "Back (profile)",
+            "UUID": "dev.appmixer.volume.back",
+            "Icon": "imgs/actions/back/icon",
+            "Tooltip": "In the Auto profile: goes back to the profile you were on before.",
+            "Controllers": [
+                "Keypad"
+            ],
+            "SupportedInMultiActions": false,
+            "UserTitleEnabled": false,
+            "States": [
+                {
+                    "Image": "imgs/actions/back/key",
+                    "ShowTitle": false
+                }
+            ]
+        },
+        {
+            "Name": "Next page",
+            "UUID": "dev.appmixer.volume.next-page",
+            "Icon": "imgs/actions/next/icon",
+            "Tooltip": "In the Auto profile: shows the next apps. Only appears when there are more pages.",
+            "Controllers": [
+                "Keypad"
+            ],
+            "SupportedInMultiActions": false,
+            "UserTitleEnabled": false,
+            "States": [
+                {
+                    "Image": "imgs/actions/next/key",
+                    "ShowTitle": false
+                }
+            ]
+        },
+        {
+            "Name": "Previous page",
+            "UUID": "dev.appmixer.volume.prev-page",
+            "Icon": "imgs/actions/prev/icon",
+            "Tooltip": "In the Auto profile: goes back to the previous apps. Only appears when you are not on the first page.",
+            "Controllers": [
+                "Keypad"
+            ],
+            "SupportedInMultiActions": false,
+            "UserTitleEnabled": false,
+            "States": [
+                {
+                    "Image": "imgs/actions/prev/key",
+                    "ShowTitle": false
+                }
+            ]
+        }
+    ],
+    "Profiles": [
+        {
+            "Name": "App Mixer Auto",
+            "DeviceType": 0,
+            "Readonly": false,
+            "DontAutoSwitchWhenInstalled": true,
+            "AutoInstall": true
+        }
+    ]
+}

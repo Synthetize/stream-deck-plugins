@@ -1,0 +1,7 @@
+node_modules/
+dist/
+build-test/
+dev.sdmonitor.sdPlugin/bin/
+dev.sdmonitor.sdPlugin/logs/
+helper/lib/
+

@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<title>App Volume Mixer</title>
+	<style>
+		:root { color-scheme: dark; }
+		* { box-sizing: border-box; }
+		body {
+			margin: 0; padding: 8px 12px 16px;
+			background: #2d2d2d; color: #d8d8d8;
+			font: 12px "Segoe UI", system-ui, sans-serif;
+		}
+		h2 {
+			font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+			color: #9a9a9a; margin: 14px 0 6px; border-bottom: 1px solid #3d3d3d; padding-bottom: 4px;
+		}
+		.row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+		.row > label:first-child { width: 96px; flex: none; color: #b8b8b8; }
+		select, button {
+			font: inherit; color: #e0e0e0; background: #3d3d3d; border: 1px solid #4a4a4a;
+			border-radius: 3px; padding: 3px 6px; min-height: 24px;
+		}
+		select { flex: 1; min-width: 0; }
+		button { cursor: pointer; }
+		button:hover { background: #474747; }
+		button:disabled { opacity: .35; cursor: default; }
+		.hint { color: #8a8a8a; font-size: 11px; margin: 2px 0 6px; line-height: 1.35; }
+		.check { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+		#list { margin-top: 6px; border: 1px solid #3d3d3d; border-radius: 4px; }
+		.item { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-bottom: 1px solid #383838; }
+		.item:last-child { border-bottom: 0; }
+		.item img, .item .noicon { width: 24px; height: 24px; flex: none; }
+		.item .noicon { border-radius: 4px; background: #444; }
+		.item .names { flex: 1; min-width: 0; }
+		.item .label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+		.item .sub { color: #8a8a8a; font-size: 10.5px; }
+		.item.off .label { color: #8a8a8a; text-decoration: line-through; }
+		.item .mv { padding: 0 6px; min-height: 22px; }
+		.empty { padding: 10px; color: #8a8a8a; text-align: center; }
+		.hidden { display: none !important; }
+	</style>
+</head>
+<body>
+	<section id="key-section" class="hidden">
+		<h2>This key</h2>
+		<div class="row">
+			<label for="mode">Mode</label>
+			<select id="mode">
+				<option value="auto">Automatic</option>
+				<option value="fixed">Fixed process</option>
+			</select>
+		</div>
+		<div class="row hidden" id="process-row">
+			<label for="process">Process</label>
+			<select id="process"></select>
+		</div>
+		<p class="hint">Press the key to mute / unmute the app. Put two <b>Volume slider</b> keys below this key, in the same column: they automatically act on this app.</p>
+	</section>
+
+	<section id="step-section" class="hidden">
+		<h2>Volume</h2>
+		<div class="row">
+			<label for="step">Volume step</label>
+			<select id="step">
+				<option value="1">1%</option>
+				<option value="2">2%</option>
+				<option value="5">5%</option>
+				<option value="10">10%</option>
+				<option value="20">20%</option>
+			</select>
+		</div>
+		<p class="hint">With 2 Volume slider keys: the upper one raises and the lower one lowers the volume by this step (hold to keep going).</p>
+	</section>
+
+	<section>
+		<h2>Processes (apply to all keys)</h2>
+		<div class="row">
+			<label for="filterMode">Filter</label>
+			<select id="filterMode">
+				<option value="blacklist">Hide the checked processes</option>
+				<option value="whitelist">Show only the checked processes</option>
+			</select>
+		</div>
+		<label class="check"><input type="checkbox" id="onlyPlaying" /> Only show apps that are playing audio</label>
+		<div class="row">
+			<label for="autoSource">Auto profile</label>
+			<select id="autoSource">
+				<option value="playing">Only apps playing audio</option>
+				<option value="all">All apps</option>
+			</select>
+		</div>
+		<p class="hint">The arrows set the order on the keys. Processes that are not running stay in the list if they are hidden or ordered.</p>
+		<div id="list"><div class="empty">Loading processes…</div></div>
+		<div class="row" style="justify-content:flex-end">
+			<button id="refresh">Refresh list</button>
+		</div>
+	</section>
+
+	<script>
+		"use strict";
+		const APP_ACTION = "dev.appmixer.volume.app";
+		const SLIDER_ACTION = "dev.appmixer.volume.slider";
+		let ws, uuid, actionUUID;
+		let settings = {};
+		let global = {};
+		let sessions = [];
+
+		const $ = (id) => document.getElementById(id);
+
+		function send(obj) {
+			if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+		}
+		function saveSettings() { send({ event: "setSettings", context: uuid, payload: settings }); }
+		function saveGlobal() { send({ event: "setGlobalSettings", context: uuid, payload: global }); renderList(); }
+		function requestSessions() { send({ event: "sendToPlugin", action: actionUUID, context: uuid, payload: { type: "getSessions" } }); }
+
+		// ---------------------------------------------------------- key
+		function renderKey() {
+			$("mode").value = settings.mode || "auto";
+			const fixed = (settings.mode || "auto") === "fixed";
+			$("process-row").classList.toggle("hidden", !fixed);
+			renderProcessSelect();
+		}
+
+		function renderStep() { $("step").value = String(settings.step || 5); }
+
+		function renderProcessSelect() {
+			const sel = $("process");
+			sel.innerHTML = "";
+			sel.add(new Option("— choose —", ""));
+			const names = new Set();
+			for (const s of sessions) { names.add(s.name); sel.add(new Option(`${s.label} (${s.name})`, s.name)); }
+			if (settings.process && !names.has(settings.process)) sel.add(new Option(`${settings.process} (not running)`, settings.process));
+			sel.value = settings.process || "";
+		}
+
+		$("mode").addEventListener("change", (e) => { settings.mode = e.target.value; saveSettings(); renderKey(); });
+		$("process").addEventListener("change", (e) => { settings.process = e.target.value; saveSettings(); });
+		$("step").addEventListener("change", (e) => { settings.step = Number(e.target.value); saveSettings(); });
+
+		// ---------------------------------------------------------- process list (global)
+		function sortedSessions() {
+			const order = global.order || [];
+			const rank = (s) => { const i = order.indexOf(s.name); return i < 0 ? Number.MAX_SAFE_INTEGER : i; };
+			return [...sessions].sort((a, b) => rank(a) - rank(b) || a.label.localeCompare(b.label, "en"));
+		}
+
+		function listKey() { return (global.filterMode === "whitelist") ? "allowed" : "hidden"; }
+
+		function renderList() {
+			$("filterMode").value = global.filterMode || "blacklist";
+			$("onlyPlaying").checked = !!global.onlyPlaying;
+			$("autoSource").value = global.autoSource === "all" ? "all" : "playing";
+			const list = $("list");
+			list.innerHTML = "";
+			const items = sortedSessions();
+			if (!items.length) { list.innerHTML = '<div class="empty">No audio processes detected.</div>'; return; }
+			const key = listKey();
+			const checked = new Set(global[key] || []);
+			const whitelist = key === "allowed";
+			items.forEach((s, i) => {
+				const row = document.createElement("div");
+				const isChecked = checked.has(s.name);
+				row.className = "item" + ((whitelist ? !isChecked : isChecked) ? " off" : "");
+
+				const icon = s.icon ? Object.assign(document.createElement("img"), { src: `data:image/png;base64,${s.icon}`, alt: "" })
+					: Object.assign(document.createElement("div"), { className: "noicon" });
+				const names = document.createElement("div");
+				names.className = "names";
+				const label = document.createElement("div");
+				label.className = "label"; label.textContent = s.label;
+				const sub = document.createElement("div");
+				sub.className = "sub"; sub.textContent = s.name + (s.running ? "" : " · not running");
+				names.append(label, sub);
+
+				const cbLabel = document.createElement("label");
+				cbLabel.className = "check";
+				const cb = document.createElement("input");
+				cb.type = "checkbox"; cb.checked = isChecked;
+				cb.addEventListener("change", () => {
+					const set = new Set(global[key] || []);
+					cb.checked ? set.add(s.name) : set.delete(s.name);
+					global[key] = [...set];
+					saveGlobal();
+				});
+				cbLabel.append(cb, document.createTextNode(whitelist ? "Show" : "Hide"));
+
+				const up = Object.assign(document.createElement("button"), { className: "mv", textContent: "↑", title: "Move up", disabled: i === 0 });
+				const down = Object.assign(document.createElement("button"), { className: "mv", textContent: "↓", title: "Move down", disabled: i === items.length - 1 });
+				up.addEventListener("click", () => move(items, i, -1));
+				down.addEventListener("click", () => move(items, i, 1));
+
+				row.append(icon, names, cbLabel, up, down);
+				list.append(row);
+			});
+		}
+
+		function move(items, i, delta) {
+			const names = items.map((s) => s.name);
+			const j = i + delta;
+			[names[i], names[j]] = [names[j], names[i]];
+			global.order = names;
+			saveGlobal();
+		}
+
+		$("filterMode").addEventListener("change", (e) => { global.filterMode = e.target.value; saveGlobal(); });
+		$("autoSource").addEventListener("change", (e) => { global.autoSource = e.target.value; saveGlobal(); });
+		$("onlyPlaying").addEventListener("change", (e) => { global.onlyPlaying = e.target.checked; saveGlobal(); });
+		$("refresh").addEventListener("click", requestSessions);
+
+		// ---------------------------------------------------------- Stream Deck connection
+		window.connectElgatoStreamDeckSocket = (port, inUUID, registerEvent, info, actionInfo) => {
+			uuid = inUUID;
+			const ai = JSON.parse(actionInfo);
+			actionUUID = ai.action;
+			settings = (ai.payload && ai.payload.settings) || {};
+			if (actionUUID === APP_ACTION) { $("key-section").classList.remove("hidden"); renderKey(); }
+			if (actionUUID === SLIDER_ACTION) { $("step-section").classList.remove("hidden"); renderStep(); }
+
+			ws = new WebSocket(`ws://127.0.0.1:${port}`);
+			ws.onopen = () => {
+				send({ event: registerEvent, uuid });
+				send({ event: "getGlobalSettings", context: uuid });
+				requestSessions();
+			};
+			ws.onmessage = (msg) => {
+				const data = JSON.parse(msg.data);
+				switch (data.event) {
+					case "didReceiveGlobalSettings":
+						global = (data.payload && data.payload.settings) || {};
+						renderList();
+						break;
+					case "didReceiveSettings":
+						settings = (data.payload && data.payload.settings) || {};
+						if (actionUUID === APP_ACTION) renderKey();
+						else if (actionUUID === SLIDER_ACTION) renderStep();
+						break;
+					case "sendToPropertyInspector":
+						if (data.payload && data.payload.type === "sessions") {
+							sessions = data.payload.sessions || [];
+							renderList();
+							if (actionUUID === APP_ACTION) renderProcessSelect();
+						}
+						break;
+				}
+			};
+		};
+	</script>
+</body>
+</html>

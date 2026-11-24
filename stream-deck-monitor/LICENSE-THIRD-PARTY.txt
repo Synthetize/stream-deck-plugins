@@ -1,0 +1,12 @@
+Third-party components shipped next to SensorHelper.exe (bin folder of the plugin)
+
+LibreHardwareMonitorLib (https://github.com/LibreHardwareMonitor/LibreHardwareMonitor)
+  License: Mozilla Public License 2.0 (https://www.mozilla.org/MPL/2.0/). The library is distributed unmodified;
+  its source code is available at the URL above.
+
+DiskInfoToolkit, BlackSharp.Core, RAMSPDToolkit-NDD, HidSharp (Apache-2.0 / MIT, see nuget.org),
+System.Memory, System.Buffers, System.Numerics.Vectors, System.Runtime.CompilerServices.Unsafe,
+System.Security.AccessControl, System.Security.Principal.Windows, System.Threading.AccessControl (MIT, .NET Foundation).
+
+PawnIO (https://pawnio.eu) is NOT bundled: it is a separately installed, signed kernel driver that
+LibreHardwareMonitorLib uses to read CPU temperature sensors.

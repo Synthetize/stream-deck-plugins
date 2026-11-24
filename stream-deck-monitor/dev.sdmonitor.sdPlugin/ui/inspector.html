@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<title>System Monitor</title>
+	<style>
+		:root { color-scheme: dark; }
+		* { box-sizing: border-box; }
+		body { margin: 0; padding: 8px 12px 16px; background: #2d2d2d; color: #d8d8d8; font: 12px "Segoe UI", system-ui, sans-serif; }
+		h2 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #9a9a9a; margin: 14px 0 6px; border-bottom: 1px solid #3d3d3d; padding-bottom: 4px; }
+		.row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+		.row > label:first-child { width: 96px; flex: none; color: #b8b8b8; }
+		select, input[type=number], button { font: inherit; color: #e0e0e0; background: #3d3d3d; border: 1px solid #4a4a4a; border-radius: 3px; padding: 3px 6px; min-height: 24px; }
+		select, input[type=number] { flex: 1; min-width: 0; }
+		input[type=color] { width: 36px; height: 24px; padding: 0; border: 1px solid #4a4a4a; background: #3d3d3d; border-radius: 3px; }
+		button { cursor: pointer; }
+		button:hover { background: #474747; }
+		button:disabled { opacity: .4; cursor: default; }
+		.hint { color: #8a8a8a; font-size: 11px; margin: 2px 0 6px; line-height: 1.35; }
+		.check { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+		.pill { display: inline-block; padding: 1px 7px; border-radius: 9px; font-size: 11px; margin-left: 4px; }
+		.ok { background: #1f5a33; color: #b9f0cb; }
+		.warn { background: #6a4a10; color: #ffe0a3; }
+		.bad { background: #6a2020; color: #ffc0c0; }
+		.status { display: grid; grid-template-columns: 96px 1fr; gap: 4px 8px; align-items: center; margin: 6px 0; }
+		.status > span:nth-child(odd) { color: #b8b8b8; }
+		.hidden { display: none !important; }
+		.btns { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+		#msg { margin-top: 4px; min-height: 16px; color: #b8b8b8; }
+	</style>
+</head>
+<body>
+	<section id="metric-section" class="hidden">
+		<h2>Metric</h2>
+		<div class="row">
+			<label for="metric">Shows</label>
+			<select id="metric">
+				<optgroup label="Processor / memory">
+					<option value="cpu">CPU usage</option>
+					<option value="ram">RAM usage</option>
+				</optgroup>
+				<optgroup label="Graphics">
+					<option value="gpu">GPU usage</option>
+					<option value="vram">GPU memory (VRAM)</option>
+				</optgroup>
+				<optgroup label="Game (RTSS)">
+					<option value="fps">FPS</option>
+					<option value="frametime">Frame time</option>
+				</optgroup>
+				<optgroup label="Temperatures">
+					<option value="cputemp">CPU temperature</option>
+					<option value="gputemp">GPU temperature</option>
+				</optgroup>
+				<optgroup label="Disk">
+					<option value="disk">Disk throughput (read + write)</option>
+					<option value="diskbusy">Disk busy time</option>
+					<option value="diskread">Disk read</option>
+					<option value="diskwrite">Disk write</option>
+				</optgroup>
+				<optgroup label="Network">
+					<option value="netdown">Download</option>
+					<option value="netup">Upload</option>
+					<option value="ping">Ping</option>
+					<option value="loss">Packet loss</option>
+				</optgroup>
+			</select>
+		</div>
+		<div class="row">
+			<label for="refresh">Refresh rate</label>
+			<select id="refresh">
+				<option value="500">0.5 s</option>
+				<option value="1000">1 s</option>
+				<option value="2000">2 s</option>
+				<option value="5000">5 s</option>
+			</select>
+		</div>
+		<div class="row">
+			<label for="graph">Graph</label>
+			<select id="graph">
+				<option value="area">Filled line</option>
+				<option value="line">Line</option>
+				<option value="bars">Bars</option>
+				<option value="off">None</option>
+			</select>
+		</div>
+		<label class="check"><input type="checkbox" id="showLabel" /> Show the name at the top of the key</label>
+	</section>
+
+	<section id="units-section" class="hidden">
+		<h2>Units</h2>
+		<div class="row" id="tempUnit-row">
+			<label for="tempUnit">Temperature</label>
+			<select id="tempUnit"><option value="C">°C</option><option value="F">°F</option></select>
+		</div>
+		<div class="row" id="pingHost-row">
+			<label for="pingHost">Ping host</label>
+			<input type="text" id="pingHost" placeholder="1.1.1.1" style="flex:1;min-width:0;font:inherit;color:#e0e0e0;background:#3d3d3d;border:1px solid #4a4a4a;border-radius:3px;padding:3px 6px;min-height:24px" />
+		</div>
+		<p class="hint" id="pingHint">Host or IP to ping once per second (ICMP, e.g. 1.1.1.1, 8.8.8.8 or your router). All ping / packet loss keys use the host of the one you changed last.</p>
+		<div class="row" id="netUnit-row">
+			<label for="netUnit">Throughput</label>
+			<select id="netUnit"><option value="bytes">Bytes (KB/s, MB/s)</option><option value="bits">Bits (kbit/s, Mbit/s)</option></select>
+		</div>
+	</section>
+
+	<section id="colors-section" class="hidden">
+		<h2>Thresholds and colors</h2>
+		<div class="row">
+			<label for="warn">Warning at</label>
+			<input type="number" id="warn" step="any" placeholder="default" />
+			<span id="unit1" style="width:36px;color:#9a9a9a"></span>
+		</div>
+		<div class="row">
+			<label for="crit">Critical at</label>
+			<input type="number" id="crit" step="any" placeholder="default" />
+			<span id="unit2" style="width:36px;color:#9a9a9a"></span>
+		</div>
+		<p class="hint" id="threshHint"></p>
+		<div class="row">
+			<label>Colors</label>
+			<span>Normal</span><input type="color" id="colorOk" />
+			<span>Warn</span><input type="color" id="colorWarn" />
+			<span>Critical</span><input type="color" id="colorCrit" />
+		</div>
+		<div class="btns"><button id="resetColors">Reset thresholds and colors</button></div>
+	</section>
+
+	<section>
+		<h2>Status</h2>
+		<div class="status">
+			<span>Helper</span><span id="st-helper">…</span>
+			<span>RTSS (FPS)</span><span id="st-rtss">…</span>
+			<span>CPU temp</span><span id="st-cpu">…</span>
+			<span>GPU temp</span><span id="st-gpu">…</span>
+		</div>
+		<p class="hint" id="temp-hint"></p>
+		<div class="btns">
+			<button id="install">Enable CPU temperature (admin, once)</button>
+			<button id="remove">Remove</button>
+		</div>
+		<div id="msg"></div>
+		<p class="hint">
+			GPU usage, GPU temperature, RAM, disk and network need nothing. CPU temperature needs a kernel driver, so it runs a small
+			helper with administrator rights (one UAC prompt, scheduled task) and the free PawnIO driver. FPS comes from RivaTuner
+			(RTSS), which must be running.
+		</p>
+	</section>
+
+	<script>
+		"use strict";
+		const METRIC_ACTION = "dev.sdmonitor.metric";
+		let ws, uuid, actionUUID;
+		let settings = {};
+		const $ = (id) => document.getElementById(id);
+
+		// default thresholds, in the unit shown to the user
+		const INFO = {
+			cpu: { unit: "%", warn: 70, crit: 90, dir: "high" },
+			ram: { unit: "%", warn: 75, crit: 90, dir: "high" },
+			gpu: { unit: "%", warn: 85, crit: 98, dir: "high" },
+			vram: { unit: "%", warn: 80, crit: 95, dir: "high" },
+			fps: { unit: "FPS", warn: 60, crit: 30, dir: "low" },
+			frametime: { unit: "ms", warn: 20, crit: 34, dir: "high" },
+			cputemp: { unit: "°C", warn: 75, crit: 90, dir: "high", temp: true },
+			gputemp: { unit: "°C", warn: 75, crit: 90, dir: "high", temp: true },
+			disk: { unit: "MB/s", dir: "none", rate: true },
+			diskbusy: { unit: "%", warn: 80, crit: 95, dir: "high" },
+			diskread: { unit: "MB/s", dir: "none", rate: true },
+			diskwrite: { unit: "MB/s", dir: "none", rate: true },
+			ping: { unit: "ms", warn: 60, crit: 120, dir: "high", ping: true },
+			loss: { unit: "%", warn: 1, crit: 5, dir: "high", ping: true },
+			netdown: { unit: "MB/s", dir: "none", rate: true },
+			netup: { unit: "MB/s", dir: "none", rate: true },
+		};
+		const DEFAULT_COLORS = { colorOk: "#4aa3ff", colorWarn: "#ffb020", colorCrit: "#ff4d4d" };
+		const ACCENT = { cpu: "#4aa3ff", ram: "#b07cff", gpu: "#3fd17f", vram: "#2fd1c5", fps: "#7ee05a", frametime: "#7ee05a", cputemp: "#ffb347", gputemp: "#ffb347", disk: "#f0c040", diskbusy: "#f0c040", diskread: "#f0c040", diskwrite: "#f08a40", netdown: "#4ad0ff", netup: "#ff7ab8", ping: "#4ad0ff", loss: "#4ad0ff" };
+
+		function send(obj) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj)); }
+		function save() { send({ event: "setSettings", context: uuid, payload: settings }); }
+		function toPlugin(payload) { send({ event: "sendToPlugin", action: actionUUID, context: uuid, payload }); }
+
+		function render() {
+			const metric = settings.metric || "cpu";
+			const info = INFO[metric];
+			$("metric").value = metric;
+			$("refresh").value = String(settings.refresh || 1000);
+			$("graph").value = settings.graph || "area";
+			$("showLabel").checked = settings.showLabel !== false;
+			$("tempUnit").value = settings.tempUnit || "C";
+			$("netUnit").value = settings.netUnit || "bytes";
+			$("tempUnit-row").classList.toggle("hidden", !info.temp);
+			$("netUnit-row").classList.toggle("hidden", !info.rate);
+			$("pingHost-row").classList.toggle("hidden", !info.ping);
+			$("pingHint").classList.toggle("hidden", !info.ping);
+			$("pingHost").value = settings.pingHost || "";
+			$("units-section").classList.toggle("hidden", !info.temp && !info.rate && !info.ping);
+			$("warn").value = settings.warn ?? ""; $("crit").value = settings.crit ?? "";
+			$("warn").placeholder = info.warn !== undefined ? `default ${info.warn}` : "off";
+			$("crit").placeholder = info.crit !== undefined ? `default ${info.crit}` : "off";
+			$("unit1").textContent = $("unit2").textContent = info.unit;
+			$("threshHint").textContent = info.dir === "low" ? "The color changes when the value falls BELOW these limits." : info.dir === "none" ? "No limits by default; set them if you want the color to change at a throughput." : "The color changes when the value reaches these limits.";
+			$("colorOk").value = settings.colorOk || ACCENT[metric] || DEFAULT_COLORS.colorOk;
+			$("colorWarn").value = settings.colorWarn || DEFAULT_COLORS.colorWarn;
+			$("colorCrit").value = settings.colorCrit || DEFAULT_COLORS.colorCrit;
+		}
+
+		function bind(id, key, parse) {
+			$(id).addEventListener("change", (e) => { settings[key] = parse ? parse(e.target) : e.target.value; save(); if (key === "metric") render(); });
+		}
+		bind("metric", "metric");
+		bind("refresh", "refresh", (el) => Number(el.value));
+		bind("graph", "graph");
+		bind("showLabel", "showLabel", (el) => el.checked);
+		bind("tempUnit", "tempUnit");
+		bind("netUnit", "netUnit");
+		bind("pingHost", "pingHost", (el) => el.value.trim());
+		bind("warn", "warn", (el) => (el.value === "" ? "" : Number(el.value)));
+		bind("crit", "crit", (el) => (el.value === "" ? "" : Number(el.value)));
+		for (const id of ["colorOk", "colorWarn", "colorCrit"]) bind(id, id);
+		$("resetColors").addEventListener("click", () => {
+			for (const k of ["warn", "crit", "colorOk", "colorWarn", "colorCrit"]) delete settings[k];
+			save(); render();
+		});
+
+		function pill(text, cls) { return `<span class="pill ${cls}">${text}</span>`; }
+
+		function showStatus(p) {
+			$("st-helper").innerHTML = p.helperRunning ? pill("running", "ok") : pill("not running", "bad");
+			$("st-rtss").innerHTML = p.fpsState === "ok" ? pill(`${p.fpsApp || "game"} running`, "ok")
+				: p.fpsState === "idle" ? pill("RTSS ready, no game", "ok")
+				: p.fpsState === "no-rtss" ? pill("RTSS not running", "bad") : pill("…", "warn");
+			$("st-gpu").innerHTML = p.gpuTemp ? pill(`${Math.round(p.gpuTemp)} °C`, "ok") : pill("no sensor", "warn");
+			let cpu, hint = "";
+			switch (p.tempStatus) {
+				case "ok": cpu = pill(`${Math.round(p.cpuTemp)} °C`, "ok"); break;
+				case "not-installed": cpu = pill("not set up", "warn"); hint = "Click “Enable CPU temperature”: one UAC prompt installs a small admin helper (scheduled task, started on demand)."; break;
+				case "starting": cpu = pill("starting…", "warn"); break;
+				case "no-driver": cpu = pill("PawnIO missing", "bad"); hint = "Install the PawnIO driver once, then press Enable again:  winget install namazso.PawnIO"; break;
+				case "unsupported": cpu = pill("unsupported CPU", "bad"); hint = "The driver is present but LibreHardwareMonitor found no CPU temperature sensor."; break;
+				case "no-lib": cpu = pill("library missing", "bad"); break;
+				default: cpu = pill("…", "warn");
+			}
+			$("st-cpu").innerHTML = cpu;
+			$("temp-hint").textContent = hint + (p.tempDetail ? ` (${p.tempDetail})` : "");
+			$("install").textContent = p.tempStatus === "not-installed" ? "Enable CPU temperature (admin, once)" : "Reinstall / update admin helper";
+		}
+
+		function setupButtons(disabled) { $("install").disabled = disabled; $("remove").disabled = disabled; }
+		$("install").addEventListener("click", () => { $("msg").textContent = "Waiting for the UAC prompt…"; setupButtons(true); toPlugin({ type: "installSensors" }); });
+		$("remove").addEventListener("click", () => { $("msg").textContent = "Waiting for the UAC prompt…"; setupButtons(true); toPlugin({ type: "removeSensors" }); });
+
+		window.connectElgatoStreamDeckSocket = (port, inUUID, registerEvent, info, actionInfo) => {
+			uuid = inUUID;
+			const ai = JSON.parse(actionInfo);
+			actionUUID = ai.action;
+			settings = (ai.payload && ai.payload.settings) || {};
+			if (actionUUID === METRIC_ACTION) {
+				for (const id of ["metric-section", "units-section", "colors-section"]) $(id).classList.remove("hidden");
+				render();
+			}
+			ws = new WebSocket(`ws://127.0.0.1:${port}`);
+			ws.onopen = () => { send({ event: registerEvent, uuid }); toPlugin({ type: "getStatus" }); };
+			ws.onmessage = (msg) => {
+				const data = JSON.parse(msg.data);
+				if (data.event === "didReceiveSettings") {
+					settings = (data.payload && data.payload.settings) || {};
+					if (actionUUID === METRIC_ACTION) render();
+				} else if (data.event === "sendToPropertyInspector" && data.payload) {
+					if (data.payload.type === "status") showStatus(data.payload);
+					else if (data.payload.type === "setupResult") { $("msg").textContent = data.payload.message; setupButtons(false); }
+				}
+			};
+		};
+	</script>
+</body>
+</html>
