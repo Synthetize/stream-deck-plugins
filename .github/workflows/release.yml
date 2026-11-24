@@ -36,7 +36,7 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # needed to find the previous tag of the same plugin for the release notes
 
@@ -80,7 +80,7 @@ jobs:
           "prev=$prev"              >> $env:GITHUB_OUTPUT
           Write-Host "Plugin: $($manifest.Name) ($folder)  version: $version  previous tag: $prev"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -96,7 +96,7 @@ jobs:
           npm run pack
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.info.outputs.folder }}
           path: ${{ steps.info.outputs.folder }}/dist/*.streamDeckPlugin
@@ -113,5 +113,5 @@ jobs:
           $files = Get-ChildItem "$env:FOLDER/dist/*.streamDeckPlugin" | ForEach-Object { $_.FullName }
           $ghArgs = @($env:GITHUB_REF_NAME) + $files + @("--title", "$env:NAME v$env:VERSION", "--generate-notes")
           if ($env:PREV) { $ghArgs += @("--notes-start-tag", $env:PREV) }
-          gh release create @args
+          gh release create @ghArgs
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
