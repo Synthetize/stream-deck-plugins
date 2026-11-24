@@ -13,8 +13,8 @@ Each plugin lives in its own folder, with its own source code, build scripts and
 
 ## Installation
 
-1. Open the [**Releases**](../../releases/latest) page.
-2. Download the `.streamDeckPlugin` file of the plugin you want.
+1. Open the [**Releases**](../../releases) page and find the latest release of the plugin you want.
+2. Download its `.streamDeckPlugin` file.
 3. Double-click it: Stream Deck installs the plugin and its bundled profile.
 
 Requirements: Windows 10/11 and Stream Deck 7.1 or later. Check each plugin's README for any extra requirements.
@@ -34,14 +34,14 @@ See each plugin's README for development details (`npm run link`, `npm run watch
 
 ## Releases
 
-Releases are built automatically by GitHub Actions ([`.github/workflows/release.yml`](.github/workflows/release.yml)). Pushing a tag that starts with `v` builds every plugin and attaches the packages to a new release:
+Each plugin is versioned and released independently by GitHub Actions ([`.github/workflows/release.yml`](.github/workflows/release.yml)). Pushing a tag in the form `<plugin-folder>/v<version>` builds only that plugin and publishes it as a new release:
 
 ```powershell
-git tag v1.0.0
-git push origin v1.0.0
+git tag app-volume-mixer/v3.2.0
+git push origin app-volume-mixer/v3.2.0
 ```
 
-Remember to bump `Version` in the plugin's `manifest.json` before tagging, otherwise Stream Deck refuses to update an installed plugin.
+Bump `Version` in the plugin's `manifest.json` first (e.g. `3.2.0.0`), and `PLUGIN_VERSION` in its `tools/make-profile.mjs` to the same value: the workflow fails if the tag and the manifest don't match, since Stream Deck refuses to update an installed plugin with the same version.
 
 ## Repository layout
 
