@@ -1,0 +1,117 @@
+# Builds ONE Stream Deck plugin and publishes it as a GitHub Release.
+#
+# Each plugin is released on its own with a tag in the form  <plugin-folder>/v<version>
+#   e.g.  app-volume-mixer/v3.2.0   or   stream-deck-monitor/v1.1.0
+#
+# How to release a plugin:
+#   1. Bump "Version" in <plugin-folder>/*.sdPlugin/manifest.json (e.g. 3.2.0.0).
+#   2. git tag app-volume-mixer/v3.2.0
+#      git push origin app-volume-mixer/v3.2.0
+#   The workflow checks that the tag matches the manifest version, builds the plugin on Windows
+#   (needs csc.exe of .NET Framework) and creates the release "App Volume Mixer v3.2.0".
+#
+# New plugins work automatically: any folder with a package.json and a *.sdPlugin/manifest.json.
+#
+# It can also be started by hand from the Actions tab (Run workflow) with a plugin folder name:
+# in that case it only builds and uploads the package as a workflow artifact, without a release.
+
+name: Release
+
+on:
+  push:
+    tags: ["*/v*"]
+  workflow_dispatch:
+    inputs:
+      plugin:
+        description: "Plugin folder to build (e.g. app-volume-mixer)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # needed to find the previous tag of the same plugin for the release notes
+
+      - name: Resolve plugin and version
+        id: info
+        env:
+          INPUT_PLUGIN: ${{ inputs.plugin }}
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq "tag") {
+            # Tag "app-volume-mixer/v3.2.0" -> folder "app-volume-mixer", version "3.2.0"
+            $tag = $env:GITHUB_REF_NAME
+            $idx = $tag.LastIndexOf("/v")
+            if ($idx -lt 1) { throw "Tag '$tag' is not in the form <plugin-folder>/v<version>" }
+            $folder = $tag.Substring(0, $idx)
+            $version = $tag.Substring($idx + 2)
+          } else {
+            $tag = ""
+            $folder = $env:INPUT_PLUGIN.Trim()
+            $version = ""
+          }
+
+          if (-not (Test-Path "$folder/package.json")) { throw "Folder '$folder' not found or has no package.json" }
+          $manifestPath = Get-ChildItem "$folder/*.sdPlugin/manifest.json" | Select-Object -First 1
+          if (-not $manifestPath) { throw "No *.sdPlugin/manifest.json in '$folder'" }
+          $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+
+          # The tag version must match the manifest ("3.2.0" vs "3.2.0.0"),
+          # otherwise Stream Deck would refuse to update an installed plugin.
+          if ($version) {
+            $mv = ($manifest.Version -split "\.")[0..2] -join "."
+            $tv = ($version -split "\.")[0..2] -join "."
+            if ($mv -ne $tv) { throw "Tag version $version does not match manifest Version $($manifest.Version). Bump the manifest first." }
+          }
+
+          # Previous tag of the same plugin, so the release notes only cover its changes since then
+          $prev = git tag --list "$folder/v*" --sort=-v:refname | Where-Object { $_ -ne $tag } | Select-Object -First 1
+
+          "folder=$folder"          >> $env:GITHUB_OUTPUT
+          "version=$version"        >> $env:GITHUB_OUTPUT
+          "name=$($manifest.Name)"  >> $env:GITHUB_OUTPUT
+          "prev=$prev"              >> $env:GITHUB_OUTPUT
+          Write-Host "Plugin: $($manifest.Name) ($folder)  version: $version  previous tag: $prev"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ${{ steps.info.outputs.folder }}/package-lock.json
+
+      - name: Build
+        working-directory: ${{ steps.info.outputs.folder }}
+        run: |
+          npm ci
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          npm run build
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          npm run pack
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.info.outputs.folder }}
+          path: ${{ steps.info.outputs.folder }}/dist/*.streamDeckPlugin
+
+      - name: Create GitHub Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FOLDER: ${{ steps.info.outputs.folder }}
+          NAME: ${{ steps.info.outputs.name }}
+          VERSION: ${{ steps.info.outputs.version }}
+          PREV: ${{ steps.info.outputs.prev }}
+        run: |
+          $files = Get-ChildItem "$env:FOLDER/dist/*.streamDeckPlugin" | ForEach-Object { $_.FullName }
+          $ghArgs = @($env:GITHUB_REF_NAME) + $files + @("--title", "$env:NAME v$env:VERSION", "--generate-notes")
+          if ($env:PREV) { $ghArgs += @("--notes-start-tag", $env:PREV) }
+          gh release create @args
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
